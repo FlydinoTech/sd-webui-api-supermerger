@@ -139,7 +139,7 @@ class UploadLoraMergeLoraRequest(BaseModel):
     output: str = Field(
         title='Output name',
         description='Output name.',
-        default='lora_output',
+        default='checkpoint_merged_output',
     )
     model: str = Field(
         title='model',

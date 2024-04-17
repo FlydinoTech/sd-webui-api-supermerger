@@ -23,6 +23,7 @@ from typing import Annotated
 import shutil
 from modules.progress import create_task_id, add_task_to_queue, start_task, finish_task, current_task
 from time import sleep
+from datetime import datetime
 
 
 class Api:
@@ -252,9 +253,9 @@ class Api:
         """Refresh Loras"""
         try:
             # comment:
-
-            res = requests.post("http://localhost:7860/sdapi/v1/refresh-loras")
-
+            print("Refresh Loras")
+            res = requests.post("http://127.0.0.1:7860/sdapi/v1/refresh-loras")
+            print("Refresh Loras response: ", res.text)
             return res
 
         except Exception as e:
@@ -262,13 +263,12 @@ class Api:
         # end try
 
     def referesh_checkpoints_request(self):
-        """Refresh Loras"""
+        """Refresh Checkpoints"""
         try:
             # comment:
-
-            res = requests.post(
-                "http://localhost:7860/sdapi/v1/refresh-checkpoints")
-
+            print("Refresh checkpoints")
+            res = requests.post("http://127.0.0.1:7860/sdapi/v1/refresh-checkpoints")
+            print("Refresh checkpoints response: ", res.text)
             return res
 
         except Exception as e:
@@ -320,12 +320,15 @@ class Api:
             # task_id = create_task_id("txt2img")
             task_merge_normal_lora_id = create_task_id("txt2img")
             task_merge_lcm_lora_id = create_task_id("txt2img")
+            task_refresh_checkpoints_id = create_task_id("txt2img")
 
             print("task merge normal lora id: ", task_merge_normal_lora_id)
             print("task merge lcm lora id: ", task_merge_lcm_lora_id)
 
             add_task_to_queue(task_merge_normal_lora_id)
             add_task_to_queue(task_merge_lcm_lora_id)
+            add_task_to_queue(task_refresh_checkpoints_id)
+
             # comment:
 
             print("Merge Request:   ", merge_request)
@@ -334,6 +337,7 @@ class Api:
             with self.queue_lock:
 
                 try:
+                    dt_str = datetime.now().strftime("%Y%m%d%H%M%S")
                     shared.state.begin(job="scripts_txt2img")
                     start_task(task_merge_normal_lora_id)
 
@@ -348,7 +352,7 @@ class Api:
                     normal_lora_reques.calc_precision = "float"
                     normal_lora_reques.save_precision = "fp16"
                     normal_lora_reques.remake_dimension = "no"
-                    normal_lora_reques.output = f"checkpoint_merged_normal_lora_{lora_file_name}"
+                    normal_lora_reques.output = f"checkpoint_merged_normal_lora_{lora_file_name}_{dt_str}"
 
                     checkpoint_merged_res = self.merge_lora(normal_lora_reques)
                     checkpoint_merged_name = checkpoint_merged_res.split(
@@ -356,7 +360,11 @@ class Api:
                     message = f"1. Upload and merge lora <{normal_lora_reques.lnames}> to <{normal_lora_reques.model}> successfully. ==> <{checkpoint_merged_name}>"
                     print("Merged normal lora successfully:   ",
                           checkpoint_merged_res)
+
                     finish_task(task_merge_normal_lora_id)
+                    start_task(task_refresh_checkpoints_id)
+                    shared.refresh_checkpoints()
+                    finish_task(task_refresh_checkpoints_id)
 
                     # merge lora
                     if merge_request.is_with_lcm == True:
