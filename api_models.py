@@ -90,6 +90,11 @@ class MergeLoraRequest(BaseModel):
         description='Loraratios.',
         default='',
     )
+    lora_extras_default: str = Field(
+        title='Lora Extras',
+        description='Lora Extras.',
+        default='pytorch_lora_weights:0.7',
+    )
 
 
 class MergeLoraResponse(BaseModel):
@@ -146,6 +151,12 @@ class UploadLoraMergeLoraRequest(BaseModel):
         description='Save precision.',
         default='fp16',
     )
+    remake_dimension: str = Field(
+        title='Remake dimension',
+        description='Remake dimension.',
+        default='no',
+        examples=["no", "auto", 4, 8, 16, 32, 64, 128, 256, 512, 768, 1024]
+    )
     calc_precision: str = Field(
         title='Calc precision',
         description='Calc precision.',
@@ -170,6 +181,11 @@ class UploadLoraMergeLoraRequest(BaseModel):
         title='Rate',
         description='Rate.',
         default=0.7,
+    )
+    is_with_lcm: bool = Field(
+        title='Is with LCM',
+        description='Is with LCM.',
+        default=True,
     )
 
 

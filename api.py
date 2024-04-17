@@ -24,6 +24,7 @@ import shutil
 from modules.progress import create_task_id, add_task_to_queue, start_task, finish_task, current_task
 from time import sleep
 
+
 class Api:
     """Api class for FastAPI"""
 
@@ -260,6 +261,20 @@ class Api:
             raise e
         # end try
 
+    def referesh_checkpoints_request(self):
+        """Refresh Loras"""
+        try:
+            # comment:
+
+            res = requests.post(
+                "http://localhost:7860/sdapi/v1/refresh-checkpoints")
+
+            return res
+
+        except Exception as e:
+            raise e
+        # end try
+
     def merge_lora_api(self, request: models.MergeLoraRequest):
         """Merge Lora"""
         try:
@@ -320,22 +335,41 @@ class Api:
                     print("Uploaded file successfully:   ", upload_res)
                     self.referesh_loras_request()
 
-                    # merge lora
+                    # merge normal lora
+                    print("1. Started to merge normal lora")
                     merge_request.lnames = f"{lora_file_name}:0.8"
+                    merge_request.calc_precision = "float"
+                    merge_request.save_precision = "fp16"
+                    merge_request.remake_dimension = "no"
+                    merge_request.output = f"checkpoint_merged_normal_lora_{lora_file_name}"
 
-                    print("Started to merge lora")
-                    merged_res = self.merge_lora(merge_request)
+                    checkpoint_merged_res = self.merge_lora(merge_request)
+                    message = f"1. Upload and merge lora <{merge_request.lnames}> to <{merge_request.model}> successfully. => <{checkpoint_merged_res}>"
+                    print("Merged normal lora successfully:   ",
+                          checkpoint_merged_res)
+                    finish_task(task_id)
+                    # merge lcm lora
+                    if merge_request.is_with_lcm == True:
+                        print("2. Started to merge lcm lora")
+                        # self.referesh_checkpoints_request()
+                        merge_request.lnames = "pytorch_lora_weights:0.7"
+                        merge_request.save_precision = "float"
+                        merge_request.calc_precision = "float"
+                        merge_request.remake_dimension = "auto"
+                        merge_request.model = checkpoint_merged_res
 
-                    message = f'Upload and merge lora <{lora_file.filename}> to checkpoint <{merge_request.model}> successfully.'
+                        merged_lcm_res = self.merge_lora(merge_request)
+                        message = f'{message}, 2. Merge lora <{merge_request.lnames}> to <{checkpoint_merged_res}> successfully. => <{merged_lcm_res}>'
+                        print("Merged LCM lora successfully:   ",
+                              checkpoint_merged_res)
 
-                    checkpoint_merged_name = merged_res.split("/")[-1]
+                    checkpoint_merged_name = checkpoint_merged_res.split(
+                        "/")[-1]
+
                 finally:
                     shared.state.end()
                     shared.total_tqdm.clear()
                     finish_task(task_id)
-
-     
-            
 
             return models.UploadLoraMergeLoraResponse(message=message, checkpoint_merged_name=checkpoint_merged_name)
         except Exception as e:
