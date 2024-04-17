@@ -317,9 +317,15 @@ class Api:
         """Upload Lora and merge Lora to checkpoint"""
         try:
 
-            task_id = create_task_id("txt2img")
-            print("Task merge ID:   ", task_id)
-            add_task_to_queue(task_id)
+            # task_id = create_task_id("txt2img")
+            task_merge_normal_lora_id = create_task_id("txt2img")
+            task_merge_lcm_lora_id = create_task_id("txt2img")
+
+            print("task merge normal lora id: ", task_merge_normal_lora_id)
+            print("task merge lcm lora id: ", task_merge_lcm_lora_id)
+
+            add_task_to_queue(task_merge_normal_lora_id)
+            add_task_to_queue(task_merge_lcm_lora_id)
             # comment:
 
             print("Merge Request:   ", merge_request)
@@ -329,7 +335,7 @@ class Api:
 
                 try:
                     shared.state.begin(job="scripts_txt2img")
-                    start_task(task_id)
+                    start_task(task_merge_normal_lora_id)
 
                     upload_res = self.upload_file(lora_file)
                     print("Uploaded file successfully:   ", upload_res)
@@ -337,46 +343,53 @@ class Api:
 
                     # merge normal lora
                     print("1. Started to merge normal lora")
-                    merge_request.lnames = f"{lora_file_name}:0.8"
-                    merge_request.calc_precision = "float"
-                    merge_request.save_precision = "fp16"
-                    merge_request.remake_dimension = "no"
-                    merge_request.output = f"checkpoint_merged_normal_lora_{lora_file_name}"
+                    normal_lora_reques = models.UploadLoraMergeLoraRequest()
+                    normal_lora_reques.lnames = f"{lora_file_name}:0.8"
+                    normal_lora_reques.calc_precision = "float"
+                    normal_lora_reques.save_precision = "fp16"
+                    normal_lora_reques.remake_dimension = "no"
+                    normal_lora_reques.output = f"checkpoint_merged_normal_lora_{lora_file_name}"
 
-                    checkpoint_merged_res = self.merge_lora(merge_request)
-                    message = f"1. Upload and merge lora <{merge_request.lnames}> to <{merge_request.model}> successfully. => <{checkpoint_merged_res}>"
-                    print("Merged normal lora successfully:   ",
-                          checkpoint_merged_res)
-                    finish_task(task_id)
-                    # merge lcm lora
-                    if merge_request.is_with_lcm == True:
-                        print("2. Started to merge lcm lora")
-                        # self.referesh_checkpoints_request()
-                        merge_request.lnames = "pytorch_lora_weights:0.7"
-                        merge_request.save_precision = "float"
-                        merge_request.calc_precision = "float"
-                        merge_request.remake_dimension = "auto"
-                        merge_request.model = checkpoint_merged_res
-
-                        merged_lcm_res = self.merge_lora(merge_request)
-                        message = f'{message}, 2. Merge lora <{merge_request.lnames}> to <{checkpoint_merged_res}> successfully. => <{merged_lcm_res}>'
-                        print("Merged LCM lora successfully:   ",
-                              checkpoint_merged_res)
-
+                    checkpoint_merged_res = self.merge_lora(normal_lora_reques)
                     checkpoint_merged_name = checkpoint_merged_res.split(
                         "/")[-1]
+                    message = f"1. Upload and merge lora <{normal_lora_reques.lnames}> to <{normal_lora_reques.model}> successfully. ==> <{checkpoint_merged_name}>"
+                    print("Merged normal lora successfully:   ",
+                          checkpoint_merged_res)
+                    finish_task(task_merge_normal_lora_id)
+
+                    # merge lora
+                    if merge_request.is_with_lcm == True:
+                        print("2. Started to merge LCM lora")
+                        start_task(task_merge_lcm_lora_id)
+                        lcm_lora_request = models.UploadLoraMergeLoraRequest()
+                        lcm_lora_request.lnames = f"pytorch_lora_weights:0.8"
+                        lcm_lora_request.calc_precision = "float"
+                        lcm_lora_request.save_precision = "float"
+                        lcm_lora_request.remake_dimension = "auto"
+                        lcm_lora_request.model = checkpoint_merged_name
+                        lcm_lora_request.output = merge_request.output
+
+                        checkpoint_merged_res = self.merge_lora(
+                            lcm_lora_request)
+                        checkpoint_merged_name = checkpoint_merged_res.split(
+                            "/")[-1]
+                        message_lcm = f"2. Merge LCM lora <{lcm_lora_request.lnames}> to <{lcm_lora_request.model}> successfully. ==> <{checkpoint_merged_name}>"
+                        print("Merged LCM lora successfully:   ",
+                              checkpoint_merged_res)
+                        finish_task(task_merge_lcm_lora_id)
+
+                        message = f"{message}, {message_lcm}"
 
                 finally:
                     shared.state.end()
                     shared.total_tqdm.clear()
-                    finish_task(task_id)
 
             return models.UploadLoraMergeLoraResponse(message=message, checkpoint_merged_name=checkpoint_merged_name)
         except Exception as e:
             raise e
         finally:
             print("Finish task")
-            finish_task(task_id)
         # end try
 
 
