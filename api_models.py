@@ -144,7 +144,7 @@ class UploadLoraMergeLoraRequest(BaseModel):
     model: str = Field(
         title='model',
         description='Checkpoint model used for the generation.',
-        default='dreamshaper_8.safetensors',
+        default='beautifulRealistic_v60.safetensors',
     )
     save_precision: str = Field(
         title='Save precision',

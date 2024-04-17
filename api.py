@@ -353,6 +353,7 @@ class Api:
                     normal_lora_reques.save_precision = "fp16"
                     normal_lora_reques.remake_dimension = "no"
                     normal_lora_reques.output = f"checkpoint_merged_normal_lora_{lora_file_name}_{dt_str}"
+                    normal_lora_reques.model = merge_request.model
 
                     checkpoint_merged_res = self.merge_lora(normal_lora_reques)
                     checkpoint_merged_name = checkpoint_merged_res.split(
