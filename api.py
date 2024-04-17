@@ -372,7 +372,7 @@ class Api:
                         print("2. Started to merge LCM lora")
                         start_task(task_merge_lcm_lora_id)
                         lcm_lora_request = models.UploadLoraMergeLoraRequest()
-                        lcm_lora_request.lnames = f"pytorch_lora_weights:0.8"
+                        lcm_lora_request.lnames = f"pytorch_lora_weights:0.7"
                         lcm_lora_request.calc_precision = "float"
                         lcm_lora_request.save_precision = "float"
                         lcm_lora_request.remake_dimension = "auto"
@@ -386,8 +386,8 @@ class Api:
                         message_lcm = f"2. Merge LCM lora <{lcm_lora_request.lnames}> to <{lcm_lora_request.model}> successfully. ==> <{checkpoint_merged_name}>"
                         print("Merged LCM lora successfully:   ",
                               checkpoint_merged_res)
+                        shared.refresh_checkpoints()
                         finish_task(task_merge_lcm_lora_id)
-
                         message = f"{message}, {message_lcm}"
 
                 finally:
