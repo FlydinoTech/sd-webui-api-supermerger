@@ -24,6 +24,11 @@ import shutil
 from modules.progress import create_task_id, add_task_to_queue, start_task, finish_task, current_task
 from time import sleep
 from datetime import datetime
+import subprocess
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class Api:
@@ -390,6 +395,9 @@ class Api:
                         finish_task(task_merge_lcm_lora_id)
                         message = f"{message}, {message_lcm}"
 
+                    print('Merge checkpoint response:: ', checkpoint_merged_res)
+                    self.copy_checkpoint(checkpoint_merged_res)
+
                 finally:
                     shared.state.end()
                     shared.total_tqdm.clear()
@@ -401,6 +409,20 @@ class Api:
             print("Finish task")
         # end try
 
+    def copy_checkpoint(source_file):
+        print('Source file:: ', source_file)
+        pem_file = os.environ['PEM_PATH']
+        server_address = os.environ['SERVER_ADDRESS']
+        destination_file = os.environ['DESTINATION_FILE']
+
+        command = ["sudo", "scp", "-i", pem_file, source_file, server_address + ":" + destination_file]
+
+        try:
+            subprocess.run(command, check=True)
+            print("File copied successfully!")
+        except subprocess.CalledProcessError as e:
+            print("Error copying file:", e.output)
+            raise e
 
 def on_app_started(_, app: FastAPI):
     Api(app, queue_lock, '/supermerger/v1')
