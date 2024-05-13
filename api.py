@@ -409,7 +409,7 @@ class Api:
             print("Finish task")
         # end try
 
-    def copy_checkpoint(source_file):
+    def copy_checkpoint(self, source_file):
         print('Source file:: ', source_file)
         pem_file = os.environ['PEM_PATH']
         server_address = os.environ['SERVER_ADDRESS']
