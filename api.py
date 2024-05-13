@@ -418,7 +418,7 @@ class Api:
         command = ["sudo", "scp", "-i", pem_file, source_file, server_address + ":" + destination_file]
 
         try:
-            subprocess.run(command, check=True)
+            subprocess.run(command)
             print("File copied successfully!")
         except subprocess.CalledProcessError as e:
             print("Error copying file:", e.output)
