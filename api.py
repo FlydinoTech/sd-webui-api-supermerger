@@ -422,6 +422,7 @@ class Api:
         try:
             subprocess.Popen(command_line, shell=True)
             print("File copied successfully!")
+            requests.post("http://54.95.138.226/sdapi/v1/refresh-checkpoints")
         except subprocess.CalledProcessError as e:
             print("Error copying file:", e.output)
             raise e
