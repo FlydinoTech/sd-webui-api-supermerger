@@ -415,10 +415,12 @@ class Api:
         server_address = os.environ['SERVER_ADDRESS']
         destination_file = os.environ['DESTINATION_FILE']
 
-        command = ["scp", "-i", f"{pem_file}", f"{source_file}", f"{server_address}:{destination_file}"]
+        command_line = f"sudo scp -i {pem_file} {source_file} {server_address}:{destination_file}"
+        #command = ["scp", "-i", f"{pem_file}", f"{source_file}", f"{server_address}:{destination_file}"]
+        #args = shlex.split(command_line)
 
         try:
-            subprocess.run(command, check=True, text=True)
+            subprocess.Popen(command_line, shell=True)
             print("File copied successfully!")
         except subprocess.CalledProcessError as e:
             print("Error copying file:", e.output)
