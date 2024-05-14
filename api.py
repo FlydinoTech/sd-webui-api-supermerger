@@ -24,7 +24,7 @@ import shutil
 from modules.progress import create_task_id, add_task_to_queue, start_task, finish_task, current_task
 from time import sleep
 from datetime import datetime
-import subprocess
+import subprocess, shlex
 import os
 from dotenv import load_dotenv
 
@@ -418,7 +418,7 @@ class Api:
         command = ["scp", "-i", f"{pem_file}", f"{source_file}", f"{server_address}:{destination_file}"]
 
         try:
-            subprocess.Popen(command)
+            subprocess.run(command, check=True, text=True)
             print("File copied successfully!")
         except subprocess.CalledProcessError as e:
             print("Error copying file:", e.output)
