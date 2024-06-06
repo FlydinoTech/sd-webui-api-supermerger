@@ -52,7 +52,9 @@ class Api:
         self.prefix = prefix
         self.running_batches: Dict[str, Dict[str, float]] = \
             defaultdict(lambda: defaultdict(int))
-
+        self.checkpoint_path = os.getenv(
+            "CHECKPOINT_PATH") or "models/StableDifussion"
+        self.lora_path = os.getenv("LORA_PATH") or "models/Lora"
         # self.add_api_route(
         #     'interrogate',
         #     self.endpoint_interrogate,
@@ -233,11 +235,6 @@ class Api:
 
             request.lnames = f"{request.lnames}"
             data = request
-            model_path = os.getenv("CHECKPOINT_PATH")
-            if model_path:
-                data.model =  f"{model_path}/{data.model}"
-            print("Model Path:   ", model_path)
-            print("Model Path:   ", data.model)
 
             res = pluslora.pluslora(
                 loraratios=data.loraratios,
@@ -324,7 +321,7 @@ class Api:
     def upload_file(self, file: UploadFile):
         try:
             # save lora file to disk
-            file_location = f"models/Lora/{file.filename}"
+            file_location = f"{self.lora_path}/{file.filename}"
             with open(file_location, "wb+") as file_object:
                 shutil.copyfileobj(file.file, file_object)
             message = f'{file.filename} saved at {file_location}'
