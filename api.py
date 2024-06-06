@@ -22,6 +22,11 @@ from fastapi import File, UploadFile, Form
 import shutil
 from modules.progress import create_task_id, add_task_to_queue, start_task, finish_task, current_task
 from time import sleep
+from dotenv import load_dotenv
+import os
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 class Api:
@@ -228,6 +233,11 @@ class Api:
 
             request.lnames = f"{request.lnames}"
             data = request
+            model_path = os.getenv("CHECKPOINT_PATH")
+            if model_path:
+                data.model =  f"{model_path}/{data.model}"
+            print("Model Path:   ", model_path)
+            print("Model Path:   ", data.model)
 
             res = pluslora.pluslora(
                 loraratios=data.loraratios,
@@ -347,7 +357,7 @@ class Api:
 
             print("Merge Request:   ", merge_request)
             lora_file_name = lora_file.filename.split(".")[0]
-
+            message = "Upload and merge lora:"
             with self.queue_lock:
 
                 try:
@@ -370,10 +380,11 @@ class Api:
                     message = f'Upload and merge lora <{lora_file.filename}> to checkpoint <{merge_request.model}> successfully.'
 
                     checkpoint_merged_name = merged_res.split("/")[-1]
-                finally:
+                except Exception as e:
+                    print("Error:   ", e)
                     # shared.state.end()
                     # shared.total_tqdm.clear()
-                    finish_task(task_id)
+                    # finish_task(task_id)
 
             return models.UploadLoraMergeLoraResponse(message=message, checkpoint_merged_name=checkpoint_merged_name)
         except Exception as e:
