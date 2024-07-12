@@ -741,7 +741,9 @@ def pluslora(lnames,loraratios,settings,output,model,save_precision,calc_precisi
             ratio = [float(x) for x in n[2:]]
             ratio = to26(ratio)
         else:ratio = [float(n[1])]*26
+        print("========== Available loras: ", lora.available_loras)
         c_lora = lora.available_loras.get(n[0], None) 
+        print("========== First lora: ", c_lora)
         names.append(n[0])
         filenames.append(c_lora.filename)
         lweis.append(ratio)
