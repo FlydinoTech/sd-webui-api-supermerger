@@ -299,6 +299,8 @@ class Api:
 
             res = requests.post("http://localhost:7860/sdapi/v1/refresh-loras")
 
+            print("======= REFRESH LORAS: ", res)
+
             return res
 
         except Exception as e:
