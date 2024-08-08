@@ -26,6 +26,7 @@ from time import sleep
 from datetime import datetime
 import subprocess, shlex
 import os
+from io import BytesIO
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -54,6 +55,11 @@ class Api:
         self.prefix = prefix
         self.running_batches: Dict[str, Dict[str, float]] = \
             defaultdict(lambda: defaultdict(int))
+        self.checkpoint_path = os.getenv(
+            "CHECKPOINT_PATH") or "checkpoint"
+        self.lora_path = os.getenv("LORA_PATH") or "models/Lora"
+        
+        print("CHECKPOINT_PATH", self.checkpoint_path)
 
         # self.add_api_route(
         #     'interrogate',
@@ -293,19 +299,27 @@ class Api:
             raise e
         # end try
 
-    def upload_file(self, file: UploadFile):
+    def upload_file(self, file):
         try:
-            # save lora file to disk
-            file_location = f"models/Lora/{file.filename}"
-            with open(file_location, "wb+") as file_object:
-                shutil.copyfileobj(file.file, file_object)
-            message = f'{file.filename} saved at {file_location}'
+            if isinstance(file, BytesIO):
+                print(111)
+                file_name = getattr(file, 'name', 'default_filename.safetensors')
+            else:
+                file_name = file.filename
+            
+            file_location = f"{self.lora_path}/{file_name}"
 
+            with open(file_location, "wb+") as file_object:
+                if isinstance(file, BytesIO):
+                    file.seek(0)  # Move to the beginning of the BytesIO object
+                    shutil.copyfileobj(file, file_object)
+                else:
+                    shutil.copyfileobj(file.file, file_object)
+
+            message = f'{file_name} saved at {file_location}'
             return message
         except Exception as e:
             raise e
-        # end try
-
     def upload_lora_api(self, lora_file: UploadFile):
         """Upload Lora"""
         try:
@@ -318,34 +332,31 @@ class Api:
             raise e
         # end try
 
-    def upload_lora_and_merge_lora_to_checkpoint(self, lora_file: UploadFile, merge_request: models.UploadLoraMergeLoraRequest = Depends()):
-        """Upload Lora and merge Lora to checkpoint"""
+    def upload_lora_and_merge_lora_to_checkpoint(self, lora_url: str, merge_request: models.UploadLoraMergeLoraRequest = Depends()):
+        """Upload Lora from URL and merge Lora to checkpoint"""
         try:
-
-            # task_id = create_task_id("txt2img")
-            task_merge_normal_lora_id = create_task_id("txt2img")
-            task_merge_lcm_lora_id = create_task_id("txt2img")
-            task_refresh_checkpoints_id = create_task_id("txt2img")
-
-            print("task merge normal lora id: ", task_merge_normal_lora_id)
-            print("task merge lcm lora id: ", task_merge_lcm_lora_id)
-
-            add_task_to_queue(task_merge_normal_lora_id)
-            add_task_to_queue(task_merge_lcm_lora_id)
-            add_task_to_queue(task_refresh_checkpoints_id)
-
-            # comment:
+            task_id = create_task_id("txt2img")
+            print("Task merge ID:   ", task_id)
+            add_task_to_queue(task_id)
 
             print("Merge Request:   ", merge_request)
-            lora_file_name = lora_file.filename.split(".")[0]
+            lora_file_name = lora_url.split("/")[-1].split(".")[0]
+            print("lora_file_name",lora_file_name)
 
             with self.queue_lock:
-
                 try:
                     dt_str = datetime.now().strftime("%Y%m%d%H%M%S")
-                    shared.state.begin(job="scripts_txt2img")
-                    start_task(task_merge_normal_lora_id)
+                    start_task(task_id)
 
+                    # Download the file from URL
+                    response = requests.get(lora_url)
+                    if response.status_code == 200:
+                        lora_file = BytesIO(response.content)
+                        lora_file.name = lora_url.split("/")[-1]  # Extract filename from URL
+                    else:
+                        raise Exception(f"Failed to download file from URL: {lora_url} with status code {response.status_code}")
+
+                    # Upload the file
                     upload_res = self.upload_file(lora_file)
                     print("Uploaded file successfully:   ", upload_res)
                     self.referesh_loras_request()
@@ -359,23 +370,17 @@ class Api:
                     normal_lora_reques.remake_dimension = "no"
                     normal_lora_reques.output = f"checkpoint_merged_normal_lora_{lora_file_name}_{dt_str}"
                     normal_lora_reques.model = merge_request.model
-
+                    
                     checkpoint_merged_res = self.merge_lora(normal_lora_reques)
-                    checkpoint_merged_name = checkpoint_merged_res.split(
-                        "/")[-1]
+                    checkpoint_merged_name = checkpoint_merged_res.split("/")[-1]
                     message = f"1. Upload and merge lora <{normal_lora_reques.lnames}> to <{normal_lora_reques.model}> successfully. ==> <{checkpoint_merged_name}>"
-                    print("Merged normal lora successfully:   ",
-                          checkpoint_merged_res)
+                    print("Merged normal lora successfully:   ", checkpoint_merged_res)
 
-                    finish_task(task_merge_normal_lora_id)
-                    start_task(task_refresh_checkpoints_id)
-                    shared.refresh_checkpoints()
-                    finish_task(task_refresh_checkpoints_id)
+                    self.referesh_checkpoints_request()
 
                     # merge lora
                     if merge_request.is_with_lcm == True:
                         print("2. Started to merge LCM lora")
-                        start_task(task_merge_lcm_lora_id)
                         lcm_lora_request = models.UploadLoraMergeLoraRequest()
                         lcm_lora_request.lnames = f"pytorch_lora_weights:0.7"
                         lcm_lora_request.calc_precision = "float"
@@ -384,19 +389,15 @@ class Api:
                         lcm_lora_request.model = checkpoint_merged_name
                         lcm_lora_request.output = merge_request.output
 
-                        checkpoint_merged_res = self.merge_lora(
-                            lcm_lora_request)
-                        checkpoint_merged_name = checkpoint_merged_res.split(
-                            "/")[-1]
+                        checkpoint_merged_res = self.merge_lora(lcm_lora_request)
+                        checkpoint_merged_name = checkpoint_merged_res.split("/")[-1]
                         message_lcm = f"2. Merge LCM lora <{lcm_lora_request.lnames}> to <{lcm_lora_request.model}> successfully. ==> <{checkpoint_merged_name}>"
-                        print("Merged LCM lora successfully:   ",
-                              checkpoint_merged_res)
+                        print("Merged LCM lora successfully:   ", checkpoint_merged_res)
                         shared.refresh_checkpoints()
-                        finish_task(task_merge_lcm_lora_id)
                         message = f"{message}, {message_lcm}"
 
                     print('Merge checkpoint response:: ', checkpoint_merged_res)
-                    self.copy_checkpoint(checkpoint_merged_res)
+                    # self.copy_checkpoint(checkpoint_merged_res)
 
                 finally:
                     shared.state.end()
