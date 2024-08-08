@@ -90,6 +90,11 @@ class MergeLoraRequest(BaseModel):
         description='Loraratios.',
         default='',
     )
+    lora_extras_default: str = Field(
+        title='Lora Extras',
+        description='Lora Extras.',
+        default='pytorch_lora_weights:0.7',
+    )
 
 
 class MergeLoraResponse(BaseModel):
@@ -134,17 +139,23 @@ class UploadLoraMergeLoraRequest(BaseModel):
     output: str = Field(
         title='Output name',
         description='Output name.',
-        default='lora_output',
+        default='checkpoint_merged_output',
     )
     model: str = Field(
         title='model',
         description='Checkpoint model used for the generation.',
-        default='dreamshaper_8.safetensors',
+        default='beautifulRealistic_v60.safetensors',
     )
     save_precision: str = Field(
         title='Save precision',
         description='Save precision.',
         default='fp16',
+    )
+    remake_dimension: str = Field(
+        title='Remake dimension',
+        description='Remake dimension.',
+        default='no',
+        examples=["no", "auto", 4, 8, 16, 32, 64, 128, 256, 512, 768, 1024]
     )
     calc_precision: str = Field(
         title='Calc precision',
@@ -170,6 +181,11 @@ class UploadLoraMergeLoraRequest(BaseModel):
         title='Rate',
         description='Rate.',
         default=0.7,
+    )
+    is_with_lcm: bool = Field(
+        title='Is with LCM',
+        description='Is with LCM.',
+        default=True,
     )
 
 
