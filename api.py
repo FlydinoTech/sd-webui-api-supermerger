@@ -265,7 +265,7 @@ class Api:
         try:
             # comment:
             print("Refresh Loras")
-            res = requests.post("http://127.0.0.1:7860/sdapi/v1/refresh-loras")
+            res = requests.post("http://localhost:7860/sdapi/v1/refresh-loras")
             print("Refresh Loras response: ", res.text)
             return res
 
@@ -278,7 +278,7 @@ class Api:
         try:
             # comment:
             print("Refresh checkpoints")
-            res = requests.post("http://127.0.0.1:7860/sdapi/v1/refresh-checkpoints")
+            res = requests.post("http://localhost:7860/sdapi/v1/refresh-checkpoints")
             print("Refresh checkpoints response: ", res.text)
             return res
 
