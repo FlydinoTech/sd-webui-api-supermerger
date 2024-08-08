@@ -380,7 +380,7 @@ class Api:
                     message = f"1. Upload and merge lora <{normal_lora_reques.lnames}> to <{normal_lora_reques.model}> successfully. ==> <{checkpoint_merged_name}>"
                     print("Merged normal lora successfully:   ", checkpoint_merged_res)
 
-                    # self.referesh_checkpoints_request()
+                    self.referesh_checkpoints_request()
 
                     # merge lora
                     if merge_request.is_with_lcm == True:
