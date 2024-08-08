@@ -278,8 +278,8 @@ class Api:
         try:
             # comment:
             print("Refresh checkpoints")
-            print("start sleep")
-            sleep(10)
+            print("start sleep 18")
+            sleep(18)
             print("end sleep")
             res = requests.post("http://52.69.236.200/sdapi/v1/refresh-checkpoints")
             print("Refresh checkpoints response: ", res.text)
